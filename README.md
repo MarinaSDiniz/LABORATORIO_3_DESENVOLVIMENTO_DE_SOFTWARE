@@ -10,15 +10,15 @@ Abaixo estão as referências para os diagramas arquiteturais e estruturais do p
 
 ### Diagrama de Casos de Uso
 Ilustra as interações dos atores (Aluno, Professor e Empresa Parceira) com as funcionalidades do sistema.
-![Diagrama de Casos de Uso](artefatos/Diagrama de Casos de Uso - Sistema de Moeda Estudantil.png)
+![Diagrama de Casos de Uso](<Artefatos/Diagrama de Casos de Uso - Sistema de Moeda Estudantil.png>)
 
 ### Diagrama de Classes
 Apresenta a estrutura de entidades, atributos, métodos e os relacionamentos de negócio.
-![Diagrama de Classes](artefatos/Diagrama de Classes - Sistema de Moeda Estudantil.png)
+![Diagrama de Classes](<Artefatos/Diagrama de Classes - Sistema de Moeda Estudantil.png>)
 
 ### Diagrama de Componentes
 Demonstra a arquitetura baseada no padrão MVC e na estratégia de persistência (DAO/ORM).
-![Diagrama de Componentes](artefatos/Diagrama de Componentes - Sistema de Moeda Estudantil.png)
+![Diagrama de Componentes](<Artefatos/Diagrama de Componentes - Sistema de Moeda Estudantil.png>)
 
 ---
 
