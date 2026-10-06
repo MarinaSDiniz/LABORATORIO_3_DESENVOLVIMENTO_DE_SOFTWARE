@@ -6,7 +6,7 @@ Este repositório contém o projeto do **Sistema de Moeda Estudantil**, desenvol
 
 ## 🏗️ Modelagem do Sistema (Artefatos)
 
-Abaixo estão as referências para os diagramas arquiteturais e estruturais do projeto. *(Certifique-se de que as imagens correspondentes estejam salvas na pasta `artefatos` do seu repositório).*
+Abaixo estão as referências para os diagramas arquiteturais e estruturais do projeto.
 
 ### Diagrama de Casos de Uso
 Ilustra as interações dos atores (Aluno, Professor e Empresa Parceira) com as funcionalidades do sistema.
