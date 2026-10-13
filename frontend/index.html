@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Moeda Estudantil</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">🪙</div>
+        <div>
+          <h2>MoedaEstudantil</h2>
+          <span>Laboratório 3</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <button id="nav-btn-alunos" class="nav-item active" onclick="navegarPara('alunos')">
+          <span class="icon">🎓</span>
+          <span>Alunos</span>
+        </button>
+        <button id="nav-btn-empresas" class="nav-item" onclick="navegarPara('empresas')">
+          <span class="icon">🏢</span>
+          <span>Empresas Parceiras</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="system-status">
+          <span class="status-indicator online"></span>
+          <span id="api-status-text">Backend Conectado</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Conteúdo Principal -->
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <h1 id="view-title">Gerenciamento de Alunos</h1>
+          <p id="view-subtitle">Consulte, cadastre, edite e gerencie os alunos do sistema.</p>
+        </div>
+        <button id="btn-novo" class="btn btn-primary" onclick="abrirModalCadastro()">
+          <span class="btn-icon">+</span> Novo Aluno
+        </button>
+      </header>
+
+      <!-- Mensagens / Feedback Alerts -->
+      <div id="alert-container"></div>
+
+      <!-- SEÇÃO ALUNOS -->
+      <section id="section-alunos" class="crud-section active">
+        <div class="table-container card">
+          <div class="table-header">
+            <h3>Lista de Alunos Cadastrados</h3>
+            <span class="badge" id="badge-total-alunos">0 registros</span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nome</th>
+                  <th>E-mail</th>
+                  <th>CPF</th>
+                  <th>Curso</th>
+                  <th>Instituição</th>
+                  <th>Saldo (Moedas)</th>
+                  <th class="text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-alunos">
+                <tr>
+                  <td colspan="8" class="text-center loading-cell">Carregando alunos...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- SEÇÃO EMPRESAS -->
+      <section id="section-empresas" class="crud-section">
+        <div class="table-container card">
+          <div class="table-header">
+            <h3>Lista de Empresas Parceiras Cadastradas</h3>
+            <span class="badge" id="badge-total-empresas">0 registros</span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nome da Empresa</th>
+                  <th>E-mail de Contato</th>
+                  <th>CNPJ</th>
+                  <th>Login de Usuário</th>
+                  <th class="text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-empresas">
+                <tr>
+                  <td colspan="6" class="text-center loading-cell">Carregando empresas...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL DE CADASTRO/EDIÇÃO DE ALUNO -->
+  <div id="modal-aluno" class="modal-overlay">
+    <div class="modal card">
+      <div class="modal-header">
+        <h3 id="modal-aluno-title">Cadastrar Novo Aluno</h3>
+        <button class="close-btn" onclick="fecharModalAluno()">&times;</button>
+      </div>
+      <form id="form-aluno" onsubmit="salvarAluno(event)">
+        <input type="hidden" id="aluno-id">
+        
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="aluno-nome">Nome Completo *</label>
+            <input type="text" id="aluno-nome" required placeholder="Ex: Ana Silva">
+          </div>
+
+          <div class="form-group">
+            <label for="aluno-email">E-mail *</label>
+            <input type="email" id="aluno-email" required placeholder="aluno@email.com">
+          </div>
+
+          <div class="form-group">
+            <label for="aluno-cpf">CPF *</label>
+            <input type="text" id="aluno-cpf" required placeholder="000.000.000-00">
+          </div>
+
+          <div class="form-group">
+            <label for="aluno-rg">RG *</label>
+            <input type="text" id="aluno-rg" required placeholder="MG-00.000.000">
+          </div>
+
+          <div class="form-group">
+            <label for="aluno-curso">Curso *</label>
+            <input type="text" id="aluno-curso" required placeholder="Engenharia de Software">
+          </div>
+
+          <div class="form-group full">
+            <label for="aluno-endereco">Endereço Residencial *</label>
+            <input type="text" id="aluno-endereco" required placeholder="Rua, número, bairro, cidade">
+          </div>
+
+          <div class="form-group full">
+            <label for="aluno-instituicao">Instituição de Ensino *</label>
+            <select id="aluno-instituicao" required>
+              <option value="">Selecione uma instituição...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="aluno-senha">Senha de Acesso *</label>
+            <input type="password" id="aluno-senha" placeholder="••••••••">
+            <small id="aluno-senha-hint" class="hint">Preencha apenas se for definir ou alterar a senha</small>
+          </div>
+
+          <div class="form-group" id="group-aluno-saldo" style="display:none;">
+            <label for="aluno-saldo">Saldo de Moedas</label>
+            <input type="number" id="aluno-saldo" min="0" value="0">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="fecharModalAluno()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-salvar-aluno">Salvar Aluno</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DE CADASTRO/EDIÇÃO DE EMPRESA PARCEIRA -->
+  <div id="modal-empresa" class="modal-overlay">
+    <div class="modal card">
+      <div class="modal-header">
+        <h3 id="modal-empresa-title">Cadastrar Empresa Parceira</h3>
+        <button class="close-btn" onclick="fecharModalEmpresa()">&times;</button>
+      </div>
+      <form id="form-empresa" onsubmit="salvarEmpresa(event)">
+        <input type="hidden" id="empresa-id">
+        
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="empresa-nome">Nome da Empresa / Razão Social *</label>
+            <input type="text" id="empresa-nome" required placeholder="Ex: Livraria Tech Ltda">
+          </div>
+
+          <div class="form-group full">
+            <label for="empresa-email">E-mail Comercial / Login *</label>
+            <input type="email" id="empresa-email" required placeholder="contato@empresa.com">
+          </div>
+
+          <div class="form-group full">
+            <label for="empresa-cnpj">CNPJ (Opcional)</label>
+            <input type="text" id="empresa-cnpj" placeholder="00.000.000/0001-00">
+          </div>
+
+          <div class="form-group full">
+            <label for="empresa-senha">Senha de Acesso *</label>
+            <input type="password" id="empresa-senha" placeholder="••••••••">
+            <small id="empresa-senha-hint" class="hint">Preencha apenas se for definir ou alterar a senha</small>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="fecharModalEmpresa()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-salvar-empresa">Salvar Empresa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
