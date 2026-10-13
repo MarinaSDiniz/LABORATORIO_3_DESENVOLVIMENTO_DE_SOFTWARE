@@ -20,6 +20,9 @@ Apresenta a estrutura de entidades, atributos, métodos e os relacionamentos de 
 Demonstra a arquitetura baseada no padrão MVC e na estratégia de persistência (DAO/ORM).
 ![Diagrama de Componentes](<Artefatos/Diagrama de Componentes - Sistema de Moeda Estudantil.png>)
 
+### Diagrama DER
+Demonstra as entidades, atributos e relacionamentos do banco de dados.
+![Diagrama DER](<Artefatos/Diagrama DER - Sistema de Moeda Estudantil.svg>)
 ---
 
 ## 📝 Histórias de Usuário (User Stories)
