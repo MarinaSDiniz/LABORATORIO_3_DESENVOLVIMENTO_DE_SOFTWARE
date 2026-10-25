@@ -2,6 +2,18 @@
 
 Este repositório contém o projeto do **Sistema de Moeda Estudantil**, desenvolvido para o Laboratório 3 de Projeto de Software. O objetivo do sistema é estimular o reconhecimento do mérito estudantil através de uma moeda virtual, distribuída por professores e trocada por alunos em empresas parceiras.
 
+## 🚀 Início Rápido
+
+```powershell
+cd backend
+npm install
+npm start
+```
+
+Acesse **http://localhost:3001**. Professor de teste: `ana.souza@prof.com` / `123456`.
+
+📄 Guia completo de execução, usuários de teste e roteiro de testes: **[COMO_TESTAR.md](COMO_TESTAR.md)**
+
 ---
 
 ## 🏗️ Modelagem do Sistema (Artefatos)

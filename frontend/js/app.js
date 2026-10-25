@@ -5,11 +5,39 @@ let instituicoesLista = [];
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', async () => {
+  aplicarMascarasInput();
   await carregarStatusApi();
   await carregarInstituicoes();
   await carregarAlunos();
   await carregarEmpresas();
 });
+
+function aplicarMascarasInput() {
+  const cpfInput = document.getElementById('aluno-cpf');
+  if (cpfInput) {
+    cpfInput.addEventListener('input', (e) => {
+      let v = e.target.value.replace(/\D/g, '');
+      if (v.length > 11) v = v.substring(0, 11);
+      v = v.replace(/(\d{3})(\d)/, '$1.$2');
+      v = v.replace(/(\d{3})(\d)/, '$1.$2');
+      v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+      e.target.value = v;
+    });
+  }
+
+  const cnpjInput = document.getElementById('empresa-cnpj');
+  if (cnpjInput) {
+    cnpjInput.addEventListener('input', (e) => {
+      let v = e.target.value.replace(/\D/g, '');
+      if (v.length > 14) v = v.substring(0, 14);
+      v = v.replace(/^(\d{2})(\d)/, '$1.$2');
+      v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+      v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
+      v = v.replace(/(\d{4})(\d)/, '$1-$2');
+      e.target.value = v;
+    });
+  }
+}
 
 // Checar status da API
 async function carregarStatusApi() {
@@ -90,6 +118,9 @@ async function carregarInstituicoes() {
   }
 }
 
+let listaAlunosCache = [];
+let listaEmpresasCache = [];
+
 // ==========================================
 // CRUD ALUNOS
 // ==========================================
@@ -98,33 +129,53 @@ async function carregarAlunos() {
   try {
     const res = await fetch(`${API_BASE}/alunos`);
     if (!res.ok) throw new Error('Falha ao buscar alunos');
-    const alunos = await res.json();
-
-    document.getElementById('badge-total-alunos').textContent = `${alunos.length} registros`;
-
-    if (alunos.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" class="text-center loading-cell">Nenhum aluno cadastrado no momento.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = alunos.map(a => `
-      <tr>
-        <td>#${a.id_aluno}</td>
-        <td><strong>${escapeHtml(a.nome)}</strong></td>
-        <td>${escapeHtml(a.email)}</td>
-        <td>${escapeHtml(a.cpf)}</td>
-        <td>${escapeHtml(a.curso)}</td>
-        <td>${escapeHtml(a.instituicao ? a.instituicao.nome : '-')}</td>
-        <td><span class="coins-badge">🪙 ${a.saldo_moedas}</span></td>
-        <td class="text-right action-buttons">
-          <button class="btn btn-sm btn-edit" onclick="editarAluno(${a.id_aluno})">Editar</button>
-          <button class="btn btn-sm btn-danger" onclick="excluirAluno(${a.id_aluno})">Excluir</button>
-        </td>
-      </tr>
-    `).join('');
+    listaAlunosCache = await res.json();
+    renderizarAlunos(listaAlunosCache);
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="8" class="text-center loading-cell" style="color:var(--danger)">Erro ao carregar alunos do servidor.</td></tr>`;
   }
+}
+
+function renderizarAlunos(alunos) {
+  const tbody = document.getElementById('tbody-alunos');
+  document.getElementById('badge-total-alunos').textContent = `${alunos.length} registros`;
+
+  if (alunos.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center loading-cell">Nenhum aluno encontrado.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = alunos.map(a => `
+    <tr>
+      <td>#${a.id_aluno}</td>
+      <td><strong>${escapeHtml(a.nome)}</strong></td>
+      <td>${escapeHtml(a.email)}</td>
+      <td>${escapeHtml(a.cpf)}</td>
+      <td>${escapeHtml(a.curso)}</td>
+      <td>${escapeHtml(a.instituicao ? a.instituicao.nome : '-')}</td>
+      <td><span class="coins-badge"><img src="img/coin.png" class="coin-icon" alt="Moedas"> ${a.saldo_moedas}</span></td>
+      <td class="text-right action-buttons">
+        <button class="btn btn-sm btn-edit" onclick="editarAluno(${a.id_aluno})">Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="excluirAluno(${a.id_aluno})">Excluir</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filtrarAlunos() {
+  const termo = (document.getElementById('search-alunos')?.value || '').toLowerCase().trim();
+  if (!termo) {
+    renderizarAlunos(listaAlunosCache);
+    return;
+  }
+  const filtrados = listaAlunosCache.filter(a =>
+    (a.nome && a.nome.toLowerCase().includes(termo)) ||
+    (a.email && a.email.toLowerCase().includes(termo)) ||
+    (a.cpf && a.cpf.toLowerCase().includes(termo)) ||
+    (a.curso && a.curso.toLowerCase().includes(termo)) ||
+    (a.instituicao && a.instituicao.nome && a.instituicao.nome.toLowerCase().includes(termo))
+  );
+  renderizarAlunos(filtrados);
 }
 
 function abrirModalAluno(dados = null) {
@@ -249,31 +300,50 @@ async function carregarEmpresas() {
   try {
     const res = await fetch(`${API_BASE}/empresas`);
     if (!res.ok) throw new Error('Falha ao buscar empresas');
-    const empresas = await res.json();
-
-    document.getElementById('badge-total-empresas').textContent = `${empresas.length} registros`;
-
-    if (empresas.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center loading-cell">Nenhuma empresa parceira cadastrada no momento.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = empresas.map(e => `
-      <tr>
-        <td>#${e.id_empresa}</td>
-        <td><strong>${escapeHtml(e.nome)}</strong></td>
-        <td>${escapeHtml(e.email)}</td>
-        <td>${escapeHtml(e.cnpj || '-')}</td>
-        <td>${escapeHtml(e.usuario ? e.usuario.login : '-')}</td>
-        <td class="text-right action-buttons">
-          <button class="btn btn-sm btn-edit" onclick="editarEmpresa(${e.id_empresa})">Editar</button>
-          <button class="btn btn-sm btn-danger" onclick="excluirEmpresa(${e.id_empresa})">Excluir</button>
-        </td>
-      </tr>
-    `).join('');
+    listaEmpresasCache = await res.json();
+    renderizarEmpresas(listaEmpresasCache);
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="6" class="text-center loading-cell" style="color:var(--danger)">Erro ao carregar empresas parceiras.</td></tr>`;
   }
+}
+
+function renderizarEmpresas(empresas) {
+  const tbody = document.getElementById('tbody-empresas');
+  document.getElementById('badge-total-empresas').textContent = `${empresas.length} registros`;
+
+  if (empresas.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center loading-cell">Nenhuma empresa parceira encontrada.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = empresas.map(e => `
+    <tr>
+      <td>#${e.id_empresa}</td>
+      <td><strong>${escapeHtml(e.nome)}</strong></td>
+      <td>${escapeHtml(e.email)}</td>
+      <td>${escapeHtml(e.cnpj || '-')}</td>
+      <td>${escapeHtml(e.usuario ? e.usuario.login : '-')}</td>
+      <td class="text-right action-buttons">
+        <button class="btn btn-sm btn-edit" onclick="editarEmpresa(${e.id_empresa})">Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="excluirEmpresa(${e.id_empresa})">Excluir</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filtrarEmpresas() {
+  const termo = (document.getElementById('search-empresas')?.value || '').toLowerCase().trim();
+  if (!termo) {
+    renderizarEmpresas(listaEmpresasCache);
+    return;
+  }
+  const filtradas = listaEmpresasCache.filter(e =>
+    (e.nome && e.nome.toLowerCase().includes(termo)) ||
+    (e.email && e.email.toLowerCase().includes(termo)) ||
+    (e.cnpj && e.cnpj.toLowerCase().includes(termo)) ||
+    (e.usuario && e.usuario.login && e.usuario.login.toLowerCase().includes(termo))
+  );
+  renderizarEmpresas(filtradas);
 }
 
 function abrirModalEmpresa(dados = null) {
