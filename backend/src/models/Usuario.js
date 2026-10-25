@@ -25,4 +25,12 @@ const Usuario = sequelize.define('Usuario', {
   timestamps: true
 });
 
+// Segurança (US09): senha armazenada com hash scrypt + salt
+const { hashSenha } = require('../services/AuthService');
+Usuario.beforeSave((usuario) => {
+  if (usuario.changed('senha') && !String(usuario.senha).startsWith('scrypt$')) {
+    usuario.senha = hashSenha(usuario.senha);
+  }
+});
+
 module.exports = Usuario;
