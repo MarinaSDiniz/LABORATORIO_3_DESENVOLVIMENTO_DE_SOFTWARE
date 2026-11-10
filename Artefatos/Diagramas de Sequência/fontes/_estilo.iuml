@@ -1,0 +1,22 @@
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam ParticipantPadding 12
+skinparam BoxPadding 8
+skinparam SequenceMessageAlign center
+skinparam SequenceReferenceBackgroundColor #FFFFFF
+skinparam SequenceGroupBodyBackgroundColor transparent
+skinparam ParticipantBackgroundColor #FFFDE7
+skinparam ParticipantBorderColor #333333
+skinparam ActorBorderColor #333333
+skinparam ActorBackgroundColor #FFFFFF
+skinparam EntityBackgroundColor #E8F5E9
+skinparam DatabaseBackgroundColor #E3F2FD
+skinparam BoundaryBackgroundColor #F3E5F5
+skinparam ControlBackgroundColor #FFF3E0
+skinparam SequenceLifeLineBorderColor #555555
+skinparam SequenceBoxBorderColor #9E9E9E
+skinparam NoteBackgroundColor #FFFFFF
+skinparam NoteBorderColor #9E9E9E
+hide footbox
+autonumber "<b>0:"

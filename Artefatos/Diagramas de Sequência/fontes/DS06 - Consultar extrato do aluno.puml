@@ -1,0 +1,55 @@
+@startuml DS06_Consultar_extrato_do_aluno
+!include _estilo.iuml
+mainframe **sd** Consultar extrato do aluno
+title DS06 - Consultar extrato do aluno (US02)\nGET /api/alunos/me/extrato
+
+actor ":Aluno" as U
+box "View" #FAFAFA
+boundary "__:PortalView__\n(portal.js)" as V
+end box
+box "Controller" #FAFAFA
+control "__:AlunoPortalController__" as APC
+end box
+box "DAO" #FAFAFA
+participant "__:AlunoDAO__" as AD
+participant "__:TransacaoDAO__" as TD
+end box
+box "Model (Sequelize)" #FAFAFA
+entity "__:Aluno__" as A
+entity "__transacoes[i]:Transacao__" as T
+end box
+
+U -> V : navegar('extrato')
+activate V
+ref over V, APC : Verificar acesso autenticado (DS02) [perfil = ALUNO]
+V -> APC : extrato(req)
+activate APC
+APC -> AD : buscarPorId(req.auth.id_entidade)
+activate AD
+AD -> A : findByPk(id, {include: [usuario, instituicao]})
+A --> AD : aluno
+AD --> APC : aluno
+deactivate AD
+APC -> TD : extratoAluno(id_aluno)
+activate TD
+TD -> T : findAll({where: {id_aluno}, include: [professor, vantagem, empresa], order: createdAt DESC})
+T --> TD : transacoes[]
+TD --> APC : transacoes[]
+deactivate TD
+
+loop i < transacoes.length
+  alt transacoes[i].tipo == 'ENVIO'
+    APC -> APC : total_recebido += transacoes[i].valor
+  else transacoes[i].tipo == 'RESGATE'
+    APC -> APC : total_resgatado += transacoes[i].valor
+  end
+end
+
+APC --> V : 200 {saldo, total_recebido, total_resgatado, transacoes}
+deactivate APC
+loop para cada transação
+  V -> V : itemTransacaoAluno(t)
+end
+V --> U : saldo, totais e histórico (recebimentos e trocas)
+deactivate V
+@enduml

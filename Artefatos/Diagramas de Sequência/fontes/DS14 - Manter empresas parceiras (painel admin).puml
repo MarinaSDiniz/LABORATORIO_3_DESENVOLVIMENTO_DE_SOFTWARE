@@ -1,0 +1,99 @@
+@startuml DS14_Manter_empresas_painel_admin
+!include _estilo.iuml
+mainframe **sd** Manter empresas parceiras
+title DS14 - CRUD de empresas parceiras no painel administrativo\nGET · POST · PUT · DELETE /api/empresas
+
+actor ":Administrador" as U
+box "View" #FAFAFA
+boundary "__:AdminView__\n(admin.html / app.js)" as V
+end box
+box "Controller" #FAFAFA
+control "__:EmpresaParceiraController__" as EC
+end box
+box "DAO" #FAFAFA
+participant "__:EmpresaParceiraDAO__" as ED
+end box
+box "Model (Sequelize)" #FAFAFA
+entity "__:EmpresaParceira__" as EM
+entity "__:Usuario__" as USU
+end box
+
+note over V, EC : rotas de empresaRoutes.js não passam pelo middleware autenticar
+
+U -> V : navegarPara('empresas')
+activate V
+V -> EC : listar(req)
+activate EC
+EC -> ED : listarTodas()
+ED -> EM : findAll({include: [usuario], order: id DESC})
+EM --> ED : empresas[]
+ED --> EC : empresas[]
+EC --> V : 200 empresas[]
+deactivate EC
+V -> V : renderizarEmpresas(empresas)
+
+alt criar empresa
+  U -> V : salvarEmpresa(event) [sem id]
+  V -> EC : criar(req)
+  activate EC
+  ref over EC, USU : Cadastrar empresa parceira (DS04), trecho de validação e EmpresaParceiraDAO.criar
+  EC --> V : 201 empresa
+  deactivate EC
+else editar empresa
+  U -> V : editarEmpresa(id)
+  V -> EC : buscarPorId(req{id})
+  EC --> V : 200 empresa
+  U -> V : salvarEmpresa(event) [com id]
+  V -> EC : atualizar(req{id, dados})
+  activate EC
+  EC -> ED : buscarPorId(id)
+  ED --> EC : existente
+  break existente == null
+    EC --> V : 404 "Empresa parceira não encontrada."
+  end
+  opt email informado
+    EC -> ED : buscarPorEmail(email, ignorarId = id)
+    ED --> EC : duplicado
+    break duplicado != null
+      EC --> V : 400 "E-mail já utilizado por outra empresa parceira."
+    end
+  end
+  EC -> ED : atualizar(id, dadosEmpresa, dadosUsuario)
+  activate ED
+  critical sequelize.transaction()
+    ED -> EM : update({nome, email, cnpj})
+    opt dadosUsuario != null
+      ED -> USU : update({login, senha})
+    end
+    ED -> ED : transaction.commit()
+  end
+  ED --> EC : empresa atualizada
+  deactivate ED
+  EC --> V : 200 empresa
+  deactivate EC
+else excluir empresa
+  U -> V : excluirEmpresa(id)
+  V --> U : confirm("Tem certeza...?")
+  opt usuário confirma
+    V -> EC : deletar(req{id})
+    activate EC
+    EC -> ED : deletar(id)
+    activate ED
+    critical sequelize.transaction()
+      ED -> EM : findByPk(id)
+      ED -> EM : <<destroy>> destroy()
+      destroy EM
+      ED -> USU : <<destroy>> destroy({where: {id_usuario}})
+      destroy USU
+      ED -> ED : transaction.commit()
+    end
+    ED --> EC : true | false
+    deactivate ED
+    EC --> V : 200 "Empresa parceira removida com sucesso." | 404
+    deactivate EC
+  end
+end
+V -> V : carregarEmpresas()
+V --> U : showAlert(mensagem)
+deactivate V
+@enduml

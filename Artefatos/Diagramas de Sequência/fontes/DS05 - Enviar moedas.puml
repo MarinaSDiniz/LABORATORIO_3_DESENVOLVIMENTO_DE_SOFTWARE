@@ -1,0 +1,96 @@
+@startuml DS05_Enviar_moedas
+!include _estilo.iuml
+mainframe **sd** Enviar moedas
+title DS05 - Enviar moedas ao aluno (US05)\nPOST /api/professores/me/envios
+
+actor ":Professor" as U
+box "View" #FAFAFA
+boundary "__:PortalView__\n(portal.js)" as V
+end box
+box "Controller / Service" #FAFAFA
+control "__:ProfessorController__" as PC
+participant "__:EmailService__" as ES
+end box
+box "DAO" #FAFAFA
+participant "__:TransacaoDAO__" as TD
+participant "__:ProfessorDAO__" as PD
+end box
+box "Model (Sequelize)" #FAFAFA
+entity "__professor:Professor__" as P
+entity "__aluno:Aluno__" as A
+entity "__:Transacao__" as T
+end box
+
+U -> V : navegar('enviar')
+activate V
+ref over V, PC : Verificar acesso autenticado (DS02) [perfil = PROFESSOR]
+par Promise.all (requisições disparadas em paralelo)
+  V ->> PC : meusDados(req)
+  PC --> V : professor
+else
+  V ->> PC : alunos(req)
+  PC --> V : alunos[] da mesma instituição
+else
+  V ->> PC : extrato(req)
+  PC --> V : extrato
+end
+V --> U : formulário com saldo disponível
+
+U -> V : enviar(id_aluno, valor, motivo)
+V -> PC : enviarMoedas(req{id_aluno, valor, motivo})
+activate PC
+
+break id_aluno ausente || valor <= 0 || motivo vazio
+  PC --> V : 400 mensagem de validação
+  V --> U : toast(erro)
+end
+
+PC -> TD : enviarMoedas(id_professor, id_aluno, valor, motivo)
+activate TD
+critical sequelize.transaction(t)
+  TD -> P : findByPk(id_professor)
+  P --> TD : professor
+  TD -> PD : garantirCreditoSemestral(professor, t)
+  activate PD
+  PD -> PD : semestreAtual()
+  opt professor.semestre_ultimo_credito != semestreAtual()
+    PD -> P : saldo_moedas += 1000; save()
+  end
+  PD --> TD : professor
+  deactivate PD
+  TD -> A : findByPk(id_aluno)
+  A --> TD : aluno
+
+  break aluno == null || aluno.id_instituicao != professor.id_instituicao || professor.saldo_moedas < valor
+    TD --> PC : throw ErroNegocio (rollback)
+    PC -> PC : tratarErro(res, e)
+    PC --> V : 400/404 "Saldo insuficiente. Você possui N moedas."
+    V --> U : toast(erro)
+  end
+
+  TD -> P : saldo_moedas -= valor; save()
+  TD -> A : saldo_moedas += valor; save()
+  create T
+  TD -> T : <<create>> create({tipo: 'ENVIO', valor, motivo, id_aluno, id_professor})
+  T --> TD : transacao
+end
+TD --> PC : {transacao, professor, aluno}
+deactivate TD
+
+PC -> ES : enviarEmail({para: aluno.email, assunto: "Você recebeu N moedas!", html})
+activate ES
+ref over ES, T : Notificar por e-mail (DS11)
+ES --> PC : notificacao
+deactivate ES
+
+PC --> V : 201 {message, transacao, saldo}
+deactivate PC
+V -> V : toast(message); form.reset()
+V -> PC : extrato(req)
+activate PC
+ref over PC, T : Consultar extrato do professor (DS07)
+PC --> V : {saldo, total_enviado, transacoes}
+deactivate PC
+V --> U : saldo e envios recentes atualizados
+deactivate V
+@enduml

@@ -1,0 +1,30 @@
+@startuml DS12_Consultar_caixa_de_emails
+!include _estilo.iuml
+mainframe **sd** Consultar caixa de e-mails
+title DS12 - Consultar caixa de e-mails (US04, US08)\nGET /api/notificacoes/me
+
+actor ":Usuário" as U
+boundary "__:PortalView__\n(portal.js)" as V
+control "__:AlunoPortalController__" as APC
+entity "__notificacoes[i]:Notificacao__" as N
+
+U -> V : navegar('emails')
+activate V
+ref over V, APC : Verificar acesso autenticado (DS02) [qualquer perfil]
+V -> APC : notificacoes(req)
+activate APC
+APC -> N : findAll({where: {id_usuario: req.auth.id_usuario}, order: createdAt DESC})
+N --> APC : notificacoes[]
+APC --> V : 200 notificacoes[]
+deactivate APC
+loop i < notificacoes.length
+  V -> V : renderizar(assunto, destinatario, enviado_smtp ? 'SMTP' : 'registrado')
+end
+V --> U : lista de e-mails
+opt usuário seleciona um e-mail
+  U -> V : abrir(notificacoes[i])
+  V -> V : abrirModal(assunto, iframe sandbox srcdoc = corpo)
+  V --> U : corpo do e-mail (com código do cupom, se houver)
+end
+deactivate V
+@enduml

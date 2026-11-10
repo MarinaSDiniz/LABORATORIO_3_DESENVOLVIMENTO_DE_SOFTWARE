@@ -48,6 +48,40 @@ Demonstra as entidades, atributos e relacionamentos do banco de dados.
 
 ![Diagrama DER](<Artefatos/Diagrama DER - Sistema de Moeda Estudantil.svg>)
 
+### Diagrama de Visão Geral de Interação (Lab04S01)
+
+Mostra o fluxo de controle entre as interações do sistema. Cada nó `ref` aponta para um dos diagramas de sequência abaixo.
+
+![Diagrama de Visão Geral de Interação](<Artefatos/Diagramas de Sequência/DVGI_Visao_geral_de_interacao.png>)
+
+### Diagramas de Sequência (Lab04S01)
+
+Cada diagrama segue a implementação: as linhas de vida são as classes reais (`PortalView` → `Controller` → `DAO` → `Model`), e cada mensagem é um método existente no receptor. Os fluxos de erro usam `break`, as transações do Sequelize usam `critical` e as interações reutilizadas usam `ref`.
+
+| Código | Interação | História |
+|---|---|---|
+| DS01 | [Autenticar usuário](<Artefatos/Diagramas de Sequência/DS01_Autenticar_usuario.png>) | US09 |
+| DS02 | [Verificar acesso autenticado (middleware)](<Artefatos/Diagramas de Sequência/DS02_Verificar_acesso_autenticado.png>) | US09 |
+| DS03 | [Cadastrar aluno](<Artefatos/Diagramas de Sequência/DS03_Cadastrar_aluno.png>) | US01 |
+| DS04 | [Cadastrar empresa parceira](<Artefatos/Diagramas de Sequência/DS04_Cadastrar_empresa_parceira.png>) | — |
+| DS05 | [Enviar moedas](<Artefatos/Diagramas de Sequência/DS05_Enviar_moedas.png>) | US05 |
+| DS06 | [Consultar extrato do aluno](<Artefatos/Diagramas de Sequência/DS06_Consultar_extrato_do_aluno.png>) | US02 |
+| DS07 | [Consultar extrato do professor](<Artefatos/Diagramas de Sequência/DS07_Consultar_extrato_do_professor.png>) | US06 |
+| DS08 | [Manter vantagens (cadastrar, editar, remover)](<Artefatos/Diagramas de Sequência/DS08_Manter_vantagens.png>) | US07 |
+| DS09 | [Resgatar vantagem](<Artefatos/Diagramas de Sequência/DS09_Resgatar_vantagem.png>) | US03, US04, US08 |
+| DS10 | [Validar cupom](<Artefatos/Diagramas de Sequência/DS10_Validar_cupom.png>) | US08 |
+| DS11 | [Notificar por e-mail](<Artefatos/Diagramas de Sequência/DS11_Notificar_por_email.png>) | US04, US08 |
+| DS12 | [Consultar caixa de e-mails](<Artefatos/Diagramas de Sequência/DS12_Consultar_caixa_de_emails.png>) | US04, US08 |
+| DS13 | [Manter alunos (painel admin)](<Artefatos/Diagramas de Sequência/DS13_Manter_alunos_painel_admin.png>) | CRUD |
+| DS14 | [Manter empresas parceiras (painel admin)](<Artefatos/Diagramas de Sequência/DS14_Manter_empresas_painel_admin.png>) | CRUD |
+
+As fontes PlantUML ficam em [`Artefatos/Diagramas de Sequência/fontes`](<Artefatos/Diagramas de Sequência/fontes>). Para regenerar os PNGs (Java 8+ e [plantuml.jar](https://plantuml.com/download)):
+
+```bash
+cd "Artefatos/Diagramas de Sequência/fontes"
+java -jar plantuml.jar -tpng -charset UTF-8 -o .. *.puml
+```
+
 ---
 
 ## 🏛️ Arquitetura e Padrões de Projeto

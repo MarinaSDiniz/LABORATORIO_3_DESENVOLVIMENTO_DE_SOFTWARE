@@ -1,0 +1,124 @@
+@startuml DVGI_Visao_geral_de_interacao
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam ActivityBackgroundColor #FFFFFF
+skinparam ActivityBorderColor #333333
+skinparam ActivityDiamondBackgroundColor #FFFFFF
+skinparam ActivityDiamondBorderColor #333333
+skinparam ArrowColor #333333
+skinparam NoteBackgroundColor #FFFFFF
+skinparam NoteBorderColor #9E9E9E
+mainframe **sd** Sistema de Moeda Estudantil - visão geral de interação
+title Diagrama de Visão Geral de Interação\n(cada nó **ref** aponta para um diagrama de sequência em Artefatos/Diagramas de Sequência)
+
+start
+if (interface acessada?) then (painel administrativo\nadmin.html)
+  repeat
+    switch (cadastro mantido?)
+    case (alunos)
+      :<b>ref</b>
+      ----
+      Manter alunos (DS13)]
+    case (empresas parceiras)
+      :<b>ref</b>
+      ----
+      Manter empresas parceiras (DS14)]
+    endswitch
+  repeat while (continuar no painel?) is (sim) not (não)
+  stop
+else (portal\nindex.html)
+endif
+
+if (usuário possui conta?) then (não)
+  switch (tipo de cadastro?)
+  case (aluno)
+    :<b>ref</b>
+    ----
+    Cadastrar aluno (DS03)]
+  case (empresa parceira)
+    :<b>ref</b>
+    ----
+    Cadastrar empresa parceira (DS04)]
+  endswitch
+  note right
+    professores são pré-cadastrados
+    pela instituição (seed)
+  end note
+else (sim)
+endif
+
+:<b>ref</b>
+----
+Autenticar usuário (DS01)]
+
+note right
+  toda requisição posterior passa por
+  <b>ref</b> Verificar acesso autenticado (DS02);
+  token inválido ou expirado volta para o login
+end note
+
+switch (perfil do token?)
+case (PROFESSOR)
+  repeat
+    switch (opção do menu?)
+    case (Enviar moedas)
+      :<b>ref</b>
+      ----
+      Enviar moedas (DS05)
+      <size:10>inclui ref Notificar por e-mail (DS11)</size>]
+    case (Extrato)
+      :<b>ref</b>
+      ----
+      Consultar extrato do professor (DS07)]
+    case (E-mails)
+      :<b>ref</b>
+      ----
+      Consultar caixa de e-mails (DS12)]
+    endswitch
+  repeat while (continuar navegando?) is (sim) not (sair)
+case (ALUNO)
+  repeat
+    switch (opção do menu?)
+    case (Vantagens)
+      :<b>ref</b>
+      ----
+      Resgatar vantagem (DS09)
+      <size:10>inclui ref Notificar por e-mail (DS11)</size>
+      <size:10>para o aluno e para a empresa</size>]
+    case (Início / Extrato)
+      :<b>ref</b>
+      ----
+      Consultar extrato do aluno (DS06)]
+    case (E-mails)
+      :<b>ref</b>
+      ----
+      Consultar caixa de e-mails (DS12)]
+    endswitch
+  repeat while (continuar navegando?) is (sim) not (sair)
+case (EMPRESA)
+  repeat
+    switch (opção do menu?)
+    case (Minhas vantagens)
+      :<b>ref</b>
+      ----
+      Manter vantagens (DS08)]
+    case (Resgates)
+      :<b>ref</b>
+      ----
+      Validar cupom (DS10)]
+    case (E-mails)
+      :<b>ref</b>
+      ----
+      Consultar caixa de e-mails (DS12)]
+    endswitch
+  repeat while (continuar navegando?) is (sim) not (sair)
+endswitch
+
+:<b>sd</b> Sair
+----
+:Usuário -> :PortalView : clicar #btn-logout
+:PortalView -> sessao : limpar()
+:PortalView -> :PortalView : mostrarAcesso()]
+stop
+@enduml
