@@ -1,0 +1,34 @@
+@startuml DS11_Notificar_por_email
+!include _estilo.iuml
+mainframe **sd** Notificar por e-mail
+title DS11 - Notificar por e-mail (US04, US08 e aviso de recebimento de moedas)\nEmailService.enviarEmail
+
+control "__:Controller__\n(ProfessorController |\nAlunoPortalController)" as C
+participant "__:EmailService__" as ES
+participant "__transporter:Transporter__\n(nodemailer)" as TR
+participant "__:ServidorSMTP__\n(externo)" as SMTP
+entity "__:Notificacao__" as N
+
+C -> ES : enviarEmail({para, assunto, html, id_usuario})
+activate ES
+ES -> ES : enviado = false
+opt transporter != null (variável SMTP_HOST configurada)
+  ES -> TR : sendMail({from, to: para, subject: assunto, html})
+  activate TR
+  TR -> SMTP : SMTP (porta SMTP_PORT, auth SMTP_USER)
+  SMTP --> TR : 250 OK | erro
+  TR --> ES : info | exceção
+  deactivate TR
+  alt envio aceito pelo servidor
+    ES -> ES : enviado = true
+  else exceção no envio
+    ES -> ES : console.error("Falha ao enviar e-mail via SMTP")
+  end
+end
+create N
+ES -> N : <<create>> create({destinatario: para, assunto, corpo: html, enviado_smtp: enviado, id_usuario})
+note right : a notificação é sempre registrada,\naparece na "Caixa de e-mails" do portal (DS12)
+N --> ES : notificacao
+ES --> C : notificacao
+deactivate ES
+@enduml

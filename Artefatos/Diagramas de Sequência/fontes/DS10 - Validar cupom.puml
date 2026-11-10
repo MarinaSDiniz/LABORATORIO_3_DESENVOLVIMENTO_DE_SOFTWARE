@@ -1,0 +1,61 @@
+@startuml DS10_Validar_cupom
+!include _estilo.iuml
+mainframe **sd** Validar cupom
+title DS10 - Conferir resgate pelo código do cupom (US08)\nGET /api/empresas/me/resgates · POST /api/empresas/me/validar-cupom
+
+actor ":EmpresaParceira" as U
+box "View" #FAFAFA
+boundary "__:PortalView__\n(portal.js)" as V
+end box
+box "Controller" #FAFAFA
+control "__:VantagemController__" as VC
+end box
+box "DAO" #FAFAFA
+participant "__:TransacaoDAO__" as TD
+end box
+box "Model (Sequelize)" #FAFAFA
+entity "__transacao:Transacao__" as T
+end box
+
+U -> V : navegar('resgates')
+activate V
+ref over V, VC : Verificar acesso autenticado (DS02) [perfil = EMPRESA]
+V -> VC : resgates(req)
+activate VC
+VC -> TD : resgatesEmpresa(id_empresa)
+TD -> T : findAll({where: {id_empresa, tipo: 'RESGATE'}, include: [aluno, vantagem]})
+T --> TD : resgates[]
+TD --> VC : resgates[]
+VC --> V : 200 resgates[]
+deactivate VC
+V --> U : histórico de resgates (pendente / utilizado)
+
+U -> V : validar(codigo)
+V -> VC : validarCupom(req{codigo})
+activate VC
+break codigo ausente
+  VC --> V : 400 "Informe o código do cupom."
+end
+VC -> TD : validarCupom(id_empresa, codigo)
+activate TD
+TD -> T : findOne({where: {codigo_cupom: trim(upper(codigo)), id_empresa}, include: [aluno, vantagem]})
+T --> TD : transacao | null
+break transacao == null
+  TD --> VC : throw ErroNegocio(404)
+  VC --> V : 404 "Cupom não encontrado para esta empresa."
+  V --> U : toast(erro)
+end
+break transacao.cupom_utilizado == true
+  TD --> VC : throw ErroNegocio(400)
+  VC --> V : 400 "Este cupom já foi utilizado."
+  V --> U : toast(erro)
+end
+TD -> T : cupom_utilizado = true; save()
+TD --> VC : transacao
+deactivate TD
+VC --> V : 200 "Cupom válido! <aluno> — <vantagem>. Troca confirmada."
+deactivate VC
+V -> V : toast(message); navegar('resgates')
+V --> U : resgate marcado como utilizado
+deactivate V
+@enduml

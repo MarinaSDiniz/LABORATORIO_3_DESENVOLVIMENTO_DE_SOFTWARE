@@ -1,0 +1,93 @@
+@startuml DS08_Manter_vantagens
+!include _estilo.iuml
+mainframe **sd** Manter vantagens
+title DS08 - Cadastrar / editar / remover vantagem (US07)\nPOST · PUT · DELETE /api/vantagens
+
+actor ":EmpresaParceira" as U
+box "View" #FAFAFA
+boundary "__:PortalView__\n(portal.js)" as V
+end box
+box "Controller" #FAFAFA
+control "__:VantagemController__" as VC
+end box
+box "DAO" #FAFAFA
+participant "__:VantagemDAO__" as VD
+end box
+box "Model (Sequelize)" #FAFAFA
+entity "__v:Vantagem__" as VT
+entity "__nova:Vantagem__" as NV
+end box
+
+U -> V : navegar('minhas')
+activate V
+ref over V, VC : Verificar acesso autenticado (DS02) [perfil = EMPRESA]
+V -> VC : minhas(req)
+activate VC
+VC -> VD : listarPorEmpresa(id_empresa)
+VD -> VT : findAll({where: {id_empresa}})
+VT --> VD : vantagens[]
+VD --> VC : vantagens[]
+VC --> V : 200 vantagens[]
+deactivate VC
+
+alt cadastrar nova vantagem
+  U -> V : modalVantagem(null, aoSalvar)
+  U -> V : preencher(nome, descricao, custo_moedas, foto)
+  alt foto enviada como arquivo
+    V -> V : lerImagem(file) : dataURL JPEG (máx. 800px)
+  else foto informada por URL
+    V -> V : foto = url
+  end
+  break foto vazia
+    V --> U : "Adicione uma foto do produto."
+  end
+  V -> VC : criar(req{nome, descricao, custo_moedas, foto})
+  activate VC
+  VC -> VC : validarDados(req.body)
+  break erro de validação (nome/descrição vazios, sem foto, custo <= 0)
+    VC --> V : 400 mensagem
+    V --> U : toast(erro)
+  end
+  VC -> VD : criar({..., id_empresa: req.auth.id_entidade})
+  create NV
+  VD -> NV : <<create>> create(dados)
+  NV --> VD : vantagem
+  VD --> VC : vantagem
+  VC --> V : 201 vantagem
+  deactivate VC
+
+else editar vantagem existente
+  U -> V : modalVantagem(v, aoSalvar)
+  V -> VC : atualizar(req{id, campos alterados})
+  activate VC
+  VC -> VD : buscarPorId(id)
+  VD --> VC : vantagem
+  break vantagem == null || vantagem.id_empresa != req.auth.id_entidade
+    VC --> V : 404 "Vantagem não encontrada."
+  end
+  VC -> VC : validarDados(req.body, parcial = true)
+  VC -> VD : atualizar(vantagem, dados)
+  VD -> VT : update(dados)
+  VC --> V : 200 vantagem
+  deactivate VC
+
+else remover vantagem
+  U -> V : remover(id_vantagem)
+  V -> VC : remover(req{id})
+  activate VC
+  VC -> VD : buscarPorId(id)
+  VD --> VC : vantagem
+  break vantagem == null || vantagem.id_empresa != req.auth.id_entidade
+    VC --> V : 404 "Vantagem não encontrada."
+  end
+  VC -> VD : remover(vantagem)
+  VD -> VT : update({ativa: false})
+  note right : exclusão lógica:\npreserva o histórico de resgates
+  VC --> V : 200 "Vantagem removida do catálogo."
+  deactivate VC
+end
+
+V -> V : toast(); fecharModal(); aoSalvar()
+V --> U : lista de vantagens atualizada
+deactivate V
+@enduml

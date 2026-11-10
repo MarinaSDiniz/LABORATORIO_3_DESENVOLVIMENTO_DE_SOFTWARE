@@ -1,0 +1,42 @@
+@startuml DS02_Verificar_acesso_autenticado
+!include _estilo.iuml
+mainframe **sd** Verificar acesso autenticado
+title DS02 - Verificar acesso autenticado (US09)\nmiddleware aplicado a todas as rotas de portalRoutes.js
+
+boundary "__:PortalView__\n(portal.js)" as V
+participant "__:AuthMiddleware__\n(auth.js)" as MW
+participant "__:AuthService__" as AS
+control "__:Controller__\n(do recurso)" as C
+
+[-> V : api(caminho, opcoes)
+activate V
+V -> MW : autenticar(req{Authorization: Bearer token}, res, next)
+activate MW
+MW -> AS : validarToken(token)
+activate AS
+AS -> AS : createHmac('sha256', SECRET)
+AS -> AS : verificar payload.exp
+AS --> MW : payload | null
+deactivate AS
+
+break payload == null (token ausente, adulterado ou expirado)
+  MW --> V : 401 "Não autenticado. Faça login novamente."
+  V -> V : sessao.limpar()
+  V -> V : mostrarAcesso()
+end
+
+MW -> MW : req.auth = payload
+MW -> MW : exigirPerfil(...perfis)(req, res, next)
+
+break req.auth.perfil não está em perfis
+  MW --> V : 403 "Acesso negado para este perfil."
+end
+
+MW -> C : next()
+deactivate MW
+activate C
+C --> V : resposta do recurso (JSON)
+deactivate C
+[<-- V : data
+deactivate V
+@enduml

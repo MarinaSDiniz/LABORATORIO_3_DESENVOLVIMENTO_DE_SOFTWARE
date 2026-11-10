@@ -1,0 +1,98 @@
+@startuml DS09_Resgatar_vantagem
+!include _estilo.iuml
+mainframe **sd** Resgatar vantagem
+title DS09 - Trocar moedas por vantagem (US03, US04, US08)\nGET /api/vantagens · POST /api/alunos/me/resgates
+
+actor ":Aluno" as U
+box "View" #FAFAFA
+boundary "__:PortalView__\n(portal.js)" as V
+end box
+box "Controller / Service" #FAFAFA
+control "__:VantagemController__" as VC
+control "__:AlunoPortalController__" as APC
+participant "__:EmailService__" as ES
+end box
+box "DAO" #FAFAFA
+participant "__:VantagemDAO__" as VD
+participant "__:TransacaoDAO__" as TD
+end box
+box "Model (Sequelize)" #FAFAFA
+entity "__aluno:Aluno__" as A
+entity "__vantagem:Vantagem__" as VT
+entity "__:Transacao__" as T
+end box
+
+U -> V : navegar('vantagens')
+activate V
+ref over V, APC : Verificar acesso autenticado (DS02) [perfil = ALUNO]
+par Promise.all
+  V ->> VC : listar(req)
+  activate VC
+  VC -> VD : listarAtivas()
+  VD -> VT : findAll({where: {ativa: true}, include: [empresa], order: custo ASC})
+  VT --> VD : vantagens[]
+  VD --> VC : vantagens[]
+  VC --> V : 200 vantagens[]
+  deactivate VC
+else
+  V ->> APC : extrato(req)
+  APC --> V : 200 {saldo, ...}
+end
+loop para cada vantagem
+  V -> V : botão "Trocar" desabilitado se saldo < custo_moedas
+end
+V --> U : vitrine de vantagens
+
+U -> V : trocar(vantagem)
+V --> U : abrirModal("Confirmar troca")
+U -> V : confirmarTroca()
+V -> APC : resgatar(req{id_vantagem})
+activate APC
+
+break id_vantagem ausente
+  APC --> V : 400 "Informe a vantagem."
+end
+
+APC -> TD : resgatarVantagem(id_aluno, id_vantagem)
+activate TD
+critical sequelize.transaction(t)
+  TD -> A : findByPk(id_aluno)
+  A --> TD : aluno
+  TD -> VT : findByPk(id_vantagem, {include: [empresa]})
+  VT --> TD : vantagem
+
+  break vantagem == null || !vantagem.ativa || aluno.saldo_moedas < vantagem.custo_moedas
+    TD --> APC : throw ErroNegocio (rollback)
+    APC --> V : 400/404 "Saldo insuficiente..."
+    V --> U : toast(erro)
+  end
+
+  TD -> A : saldo_moedas -= vantagem.custo_moedas; save()
+  TD -> TD : gerarCodigoCupom() : "ME-XXXXXXXX"
+  create T
+  TD -> T : <<create>> create({tipo: 'RESGATE', valor, codigo_cupom, id_aluno, id_vantagem, id_empresa})
+  T --> TD : transacao
+end
+TD --> APC : {transacao, aluno, vantagem}
+deactivate TD
+
+APC -> ES : enviarEmail({para: aluno.email, assunto: "Seu cupom: ...", html com codigo_cupom})
+activate ES
+note right : US04 - cupom para o aluno
+ref over ES, T : Notificar por e-mail (DS11)
+ES --> APC : notificacao
+deactivate ES
+
+APC -> ES : enviarEmail({para: vantagem.empresa.email, assunto: "Novo resgate: ...", html com codigo_cupom})
+activate ES
+note right : US08 - mesmo código para o parceiro conferir
+ref over ES, T : Notificar por e-mail (DS11)
+ES --> APC : notificacao
+deactivate ES
+
+APC --> V : 201 {message, codigo_cupom, saldo}
+deactivate APC
+V -> V : atualizarBotoes()
+V --> U : abrirModal("Troca realizada!", codigo_cupom)
+deactivate V
+@enduml

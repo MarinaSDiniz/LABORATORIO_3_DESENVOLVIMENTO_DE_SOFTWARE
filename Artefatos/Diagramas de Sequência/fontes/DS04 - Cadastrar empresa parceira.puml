@@ -1,0 +1,70 @@
+@startuml DS04_Cadastrar_empresa_parceira
+!include _estilo.iuml
+mainframe **sd** Cadastrar empresa parceira
+title DS04 - Cadastrar empresa parceira\nPOST /api/empresas
+
+actor ":EmpresaParceira" as U
+box "View" #FAFAFA
+boundary "__:PortalView__\n(portal.js)" as V
+end box
+box "Controller" #FAFAFA
+control "__:EmpresaParceiraController__" as EC
+end box
+box "DAO" #FAFAFA
+participant "__:EmpresaParceiraDAO__" as ED
+end box
+box "Model (Sequelize)" #FAFAFA
+entity "__:Usuario__" as USU
+participant "__:AuthService__" as AS
+entity "__:EmpresaParceira__" as EM
+end box
+
+U -> V : preencherCadastro(nome, email, cnpj, senha)
+activate V
+V -> EC : criar(req{nome, email, cnpj, senha})
+activate EC
+
+break nome, email ou senha ausentes
+  EC --> V : 400 "Campos obrigatórios: nome, email, senha."
+  V --> U : toast(erro)
+end
+
+EC -> ED : buscarPorEmail(email)
+activate ED
+ED -> EM : findOne({where: {email}})
+EM --> ED : empresa | null
+ED --> EC : existente
+deactivate ED
+
+break existente != null
+  EC --> V : 400 "Já existe uma empresa parceira cadastrada com este e-mail."
+  V --> U : toast(erro)
+end
+
+EC -> ED : criar({nome, email, cnpj}, {login: email, senha})
+activate ED
+critical sequelize.transaction()
+  create USU
+  ED -> USU : <<create>> create({login, senha, tipo_perfil: 'EMPRESA'})
+  activate USU
+  USU -> AS : beforeSave → hashSenha(senha)
+  AS --> USU : "scrypt$salt$hash"
+  USU --> ED : usuario
+  deactivate USU
+  create EM
+  ED -> EM : <<create>> create({nome, email, cnpj, id_usuario})
+  EM --> ED : empresa
+  ED -> ED : transaction.commit()
+end
+note right of ED : em qualquer exceção:\ntransaction.rollback() e rethrow
+ED -> ED : buscarPorId(empresa.id_empresa)
+ED --> EC : empresa
+deactivate ED
+EC --> V : 201 empresa
+deactivate EC
+
+ref over V, ED : Autenticar usuário (DS01) com login = email e a senha informada
+
+V --> U : toast("Empresa cadastrada! Agora cadastre suas vantagens.")
+deactivate V
+@enduml

@@ -1,0 +1,90 @@
+@startuml DS03_Cadastrar_aluno
+!include _estilo.iuml
+mainframe **sd** Cadastrar aluno
+title DS03 - Cadastrar aluno (US01)\nGET /api/instituicoes · POST /api/alunos
+
+actor ":Aluno" as U
+box "View" #FAFAFA
+boundary "__:PortalView__\n(portal.js)" as V
+end box
+box "Controller" #FAFAFA
+control "__:App__\n(server.js)" as APP
+control "__:AlunoController__" as AC
+end box
+box "DAO" #FAFAFA
+participant "__:AlunoDAO__" as AD
+end box
+box "Model (Sequelize)" #FAFAFA
+entity "__:InstituicaoEnsino__" as IE
+entity "__:Usuario__" as USU
+participant "__:AuthService__" as AS
+entity "__:Aluno__" as AL
+end box
+
+U -> V : abrirAba("Sou aluno")
+activate V
+V -> V : carregarInstituicoes()
+V -> APP : GET /api/instituicoes
+activate APP
+APP -> IE : findAll({order: nome ASC})
+IE --> APP : instituicoes[]
+APP --> V : 200 instituicoes[]
+deactivate APP
+V --> U : select de instituições preenchido
+
+U -> V : preencherCadastro(nome, email, cpf, rg, endereco, instituicao, curso, senha)
+V -> AC : criar(req{nome, email, cpf, rg, endereco, curso, id_instituicao, senha})
+activate AC
+
+break algum campo obrigatório ausente
+  AC --> V : 400 "Campos obrigatórios: ..."
+  V --> U : toast(erro)
+end
+
+AC -> AD : buscarPorEmailOuCpf(email, cpf)
+activate AD
+AD -> AL : findOne({where: {[Op.or]: [{email}, {cpf}]}})
+AL --> AD : aluno | null
+AD --> AC : existente
+deactivate AD
+
+break existente != null
+  AC --> V : 400 "Já existe um aluno cadastrado com este e-mail ou CPF."
+  V --> U : toast(erro)
+end
+
+AC -> IE : findByPk(id_instituicao)
+IE --> AC : instituicao | null
+
+break instituicao == null
+  AC --> V : 400 "Instituição de ensino informada não existe."
+  V --> U : toast(erro)
+end
+
+AC -> AD : criar(dadosAluno{..., saldo_moedas: 0}, dadosUsuario{login: email, senha})
+activate AD
+critical sequelize.transaction()
+  create USU
+  AD -> USU : <<create>> create({login, senha, tipo_perfil: 'ALUNO'})
+  activate USU
+  USU -> AS : beforeSave → hashSenha(senha)
+  AS --> USU : "scrypt$salt$hash"
+  USU --> AD : usuario
+  deactivate USU
+  create AL
+  AD -> AL : <<create>> create({..., id_usuario: usuario.id_usuario})
+  AL --> AD : aluno
+  AD -> AD : transaction.commit()
+end
+note right of AD : em qualquer exceção:\ntransaction.rollback() e rethrow
+AD -> AD : buscarPorId(aluno.id_aluno)
+AD --> AC : aluno (com usuario e instituicao)
+deactivate AD
+AC --> V : 201 aluno
+deactivate AC
+
+ref over V, AD : Autenticar usuário (DS01) com login = email e a senha informada
+
+V --> U : toast("Conta criada com sucesso!") e iniciarApp()
+deactivate V
+@enduml

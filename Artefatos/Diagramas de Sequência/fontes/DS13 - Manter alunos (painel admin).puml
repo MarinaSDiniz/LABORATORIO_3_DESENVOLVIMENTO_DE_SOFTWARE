@@ -1,0 +1,99 @@
+@startuml DS13_Manter_alunos_painel_admin
+!include _estilo.iuml
+mainframe **sd** Manter alunos
+title DS13 - CRUD de alunos no painel administrativo\nGET · POST · PUT · DELETE /api/alunos
+
+actor ":Administrador" as U
+box "View" #FAFAFA
+boundary "__:AdminView__\n(admin.html / app.js)" as V
+end box
+box "Controller" #FAFAFA
+control "__:AlunoController__" as AC
+end box
+box "DAO" #FAFAFA
+participant "__:AlunoDAO__" as AD
+end box
+box "Model (Sequelize)" #FAFAFA
+entity "__:Aluno__" as A
+entity "__:Usuario__" as USU
+end box
+
+note over V, AC : rotas de alunoRoutes.js não passam pelo middleware autenticar
+
+U -> V : navegarPara('alunos')
+activate V
+V -> AC : listar(req)
+activate AC
+AC -> AD : listarTodos()
+AD -> A : findAll({include: [usuario, instituicao], order: id DESC})
+A --> AD : alunos[]
+AD --> AC : alunos[]
+AC --> V : 200 alunos[]
+deactivate AC
+V -> V : renderizarAlunos(alunos)
+
+alt criar aluno
+  U -> V : salvarAluno(event) [sem id]
+  V -> AC : criar(req)
+  activate AC
+  ref over AC, USU : Cadastrar aluno (DS03), trecho de validação e AlunoDAO.criar
+  AC --> V : 201 aluno
+  deactivate AC
+else editar aluno
+  U -> V : editarAluno(id)
+  V -> AC : buscarPorId(req{id})
+  AC --> V : 200 aluno
+  U -> V : salvarAluno(event) [com id]
+  V -> AC : atualizar(req{id, dados})
+  activate AC
+  AC -> AD : buscarPorId(id)
+  AD --> AC : existente
+  break existente == null
+    AC --> V : 404 "Aluno não encontrado."
+  end
+  opt email ou cpf informados
+    AC -> AD : buscarPorEmailOuCpf(email, cpf, ignorarId = id)
+    AD --> AC : duplicado
+    break duplicado != null
+      AC --> V : 400 "E-mail ou CPF já utilizado por outro aluno."
+    end
+  end
+  AC -> AD : atualizar(id, dadosAluno, dadosUsuario)
+  activate AD
+  critical sequelize.transaction()
+    AD -> A : update(dadosAluno)
+    opt dadosUsuario != null (login ou senha alterados)
+      AD -> USU : update({login, senha})
+    end
+    AD -> AD : transaction.commit()
+  end
+  AD --> AC : aluno atualizado
+  deactivate AD
+  AC --> V : 200 aluno
+  deactivate AC
+else excluir aluno
+  U -> V : excluirAluno(id)
+  V --> U : confirm("Tem certeza...?")
+  opt usuário confirma
+    V -> AC : deletar(req{id})
+    activate AC
+    AC -> AD : deletar(id)
+    activate AD
+    critical sequelize.transaction()
+      AD -> A : findByPk(id)
+      AD -> A : <<destroy>> destroy()
+      destroy A
+      AD -> USU : <<destroy>> destroy({where: {id_usuario}})
+      destroy USU
+      AD -> AD : transaction.commit()
+    end
+    AD --> AC : true | false
+    deactivate AD
+    AC --> V : 200 "Aluno removido com sucesso." | 404
+    deactivate AC
+  end
+end
+V -> V : carregarAlunos()
+V --> U : showAlert(mensagem)
+deactivate V
+@enduml

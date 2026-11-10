@@ -1,0 +1,73 @@
+@startuml DS01_Autenticar_usuario
+!include _estilo.iuml
+mainframe **sd** Autenticar usuário
+title DS01 - Autenticar usuário (US09)\nPOST /api/auth/login
+
+actor ":Usuário" as U
+box "View" #FAFAFA
+boundary "__:PortalView__\n(portal.js)" as V
+end box
+box "Controller / Service" #FAFAFA
+control "__:AuthController__" as AC
+participant "__:AuthService__" as AS
+end box
+box "Model (Sequelize)" #FAFAFA
+entity "__:Usuario__" as USU
+entity "__:Aluno__" as AL
+entity "__:Professor__" as PR
+entity "__:EmpresaParceira__" as EM
+end box
+
+U -> V : informarCredenciais(login, senha)
+activate V
+V -> AC : login(req{login, senha})
+activate AC
+
+break login ou senha não informados
+  AC --> V : 400 "Informe login (e-mail) e senha."
+  V --> U : toast(erro)
+end
+
+AC -> USU : findOne({where: {login}})
+activate USU
+USU --> AC : usuario
+deactivate USU
+
+AC -> AS : verificarSenha(senha, usuario.senha)
+activate AS
+AS -> AS : scryptSync(senha, salt)
+AS --> AC : boolean
+deactivate AS
+
+break usuario == null || senha inválida
+  AC --> V : 401 "Login ou senha inválidos."
+  V --> U : toast(erro)
+end
+
+AC -> AC : carregarPerfil(usuario)
+activate AC
+alt usuario.tipo_perfil == 'ALUNO'
+  AC -> AL : findOne({where: {id_usuario}})
+  AL --> AC : aluno
+else usuario.tipo_perfil == 'PROFESSOR'
+  AC -> PR : findOne({where: {id_usuario}})
+  PR --> AC : professor
+else usuario.tipo_perfil == 'EMPRESA'
+  AC -> EM : findOne({where: {id_usuario}})
+  EM --> AC : empresa
+end
+deactivate AC
+
+AC -> AS : gerarToken({id_usuario, perfil, id_entidade})
+activate AS
+AS -> AS : createHmac('sha256', SECRET)
+AS --> AC : token
+deactivate AS
+
+AC --> V : 200 {token, perfil, nome, id_entidade}
+deactivate AC
+V -> V : sessao.salvar(d)
+V -> V : iniciarApp()
+V --> U : menu do perfil (MENUS[perfil])
+deactivate V
+@enduml

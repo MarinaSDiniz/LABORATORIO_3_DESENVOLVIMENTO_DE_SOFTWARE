@@ -1,0 +1,55 @@
+@startuml DS07_Consultar_extrato_do_professor
+!include _estilo.iuml
+mainframe **sd** Consultar extrato do professor
+title DS07 - Consultar extrato do professor (US06)\nGET /api/professores/me/extrato
+
+actor ":Professor" as U
+box "View" #FAFAFA
+boundary "__:PortalView__\n(portal.js)" as V
+end box
+box "Controller" #FAFAFA
+control "__:ProfessorController__" as PC
+end box
+box "DAO" #FAFAFA
+participant "__:ProfessorDAO__" as PD
+participant "__:TransacaoDAO__" as TD
+end box
+box "Model (Sequelize)" #FAFAFA
+entity "__:Professor__" as P
+entity "__transacoes[i]:Transacao__" as T
+end box
+
+U -> V : navegar('extrato')
+activate V
+ref over V, PC : Verificar acesso autenticado (DS02) [perfil = PROFESSOR]
+V -> PC : extrato(req)
+activate PC
+PC -> PD : buscarPorId(req.auth.id_entidade)
+activate PD
+PD -> P : findByPk(id, {include: [usuario, instituicao]})
+P --> PD : professor
+PD -> PD : garantirCreditoSemestral(professor)
+activate PD
+opt professor.semestre_ultimo_credito != semestreAtual()
+  PD -> P : saldo_moedas += 1000; semestre_ultimo_credito = atual; save()
+end
+deactivate PD
+PD --> PC : professor
+deactivate PD
+PC -> TD : extratoProfessor(id_professor)
+activate TD
+TD -> T : findAll({where: {id_professor, tipo: 'ENVIO'}, include: [aluno], order: createdAt DESC})
+T --> TD : transacoes[]
+TD --> PC : transacoes[]
+deactivate TD
+loop i < transacoes.length
+  PC -> PC : total_enviado += transacoes[i].valor
+end
+PC --> V : 200 {saldo, total_enviado, transacoes}
+deactivate PC
+loop para cada envio
+  V -> V : itemEnvio(t)
+end
+V --> U : saldo disponível, total distribuído e envios
+deactivate V
+@enduml
