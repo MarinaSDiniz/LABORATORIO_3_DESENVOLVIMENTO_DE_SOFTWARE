@@ -11,7 +11,8 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middlewares
-app.use(cors());
+const allowedOrigins = (process.env.CORS_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean);
+app.use(cors(allowedOrigins.length ? { origin: allowedOrigins } : undefined));
 app.use(express.json({ limit: '6mb' })); // fotos de vantagens em base64
 
 // Frontend estático (http://localhost:3001)
@@ -34,15 +35,15 @@ app.get('/api/instituicoes', async (req, res) => {
 
 // Health check
 app.get('/api/status', (req, res) => {
-  res.json({ status: 'API em funcionamento', orm: 'Sequelize', database: 'SQLite' });
+  res.json({ status: 'API em funcionamento', orm: 'Sequelize', database: sequelize.getDialect() === 'postgres' ? 'PostgreSQL' : 'SQLite' });
 });
 
 // Inicialização e sincronização do Banco de Dados
 async function startServer() {
   try {
     // Sincroniza tabelas do ORM
-    await sequelize.sync({ alter: true });
-    console.log('✅ Banco de dados SQLite sincronizado com sucesso via Sequelize ORM.');
+    await sequelize.sync(process.env.NODE_ENV === 'production' ? {} : { alter: true });
+    console.log('✅ Banco de dados sincronizado com sucesso via Sequelize ORM.');
 
     // Seed inicial de instituições de ensino se a tabela estiver vazia
     const count = await InstituicaoEnsino.count();

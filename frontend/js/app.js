@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) || (location.port === '3001' ? '/api' : 'http://localhost:3001/api');
 
 let abaAtual = 'alunos';
 let instituicoesLista = [];

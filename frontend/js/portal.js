@@ -1,4 +1,4 @@
-const API = location.port === '3001' ? '/api' : 'http://localhost:3001/api';
+const API = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) || (location.port === '3001' ? '/api' : 'http://localhost:3001/api');
 const sessao = {
   get token() { return localStorage.getItem('me_token'); },
   get dados() { return JSON.parse(localStorage.getItem('me_sessao') || 'null'); },
